@@ -12,7 +12,7 @@ def application(environ, start_response):
     except ValueError:
         length = 0
 
-    print environ['wsgi.input'].read(length)
+    #print environ['wsgi.input'].read(length)
     output = pformat(environ)    
     return [output]
     
