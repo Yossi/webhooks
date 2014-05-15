@@ -64,7 +64,7 @@ def HMAC_OK(payload, hash):
     computed_hash = hmac.new(key, payload, hashlib.sha1).hexdigest()
     print hash
     print computed_hash
-    print hash = computed_hash
+    print hash == computed_hash
     
     return True
 
