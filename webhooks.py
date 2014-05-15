@@ -3,12 +3,14 @@ from pprint import pformat, pprint
 import sys, os
 import json
 from subprocess import call
+import hashlib
+import hmac
 
 # "inspired" by (read, stolen from): https://github.com/logsol/Github-Auto-Deploy
 
 def getConfig():
     try:
-        configString = open(os.path.dirname(__file__) + '/config.json').read()
+        configString = open(os.path.join(os.path.dirname(__file__), 'config.json')).read()
     except:
         sys.exit('Could not load config.json file')
 
@@ -25,13 +27,16 @@ def getConfig():
 
     return config
 
-def getUrl(environ):
+def getPayload(environ):
     try:
         length = int(environ.get('CONTENT_LENGTH', '0'))
     except ValueError:
         length = 0
+        
+    return environ['wsgi.input'].read(length)
 
-    url = json.loads(environ['wsgi.input'].read(length))['repository']['url']
+def getUrl(payload):
+    url = json.loads(payload).get('repository', {}).get('url', '')
     return url
 
 def getMatchingPaths(repoUrl):
@@ -53,14 +58,26 @@ def deploy(path):
                  call(['cd "' + path + '" && ' + repository['deploy']], shell=True)
             break
 
+def HMAC_OK(payload, hash):
+    key = '123'
+    print payload
+    computed_hash = hmac.new(key, payload, hashlib.sha1).hexdigest()
+    print hash
+    print computed_hash
+    print hash = computed_hash
+    
+    return True
 
 def application(environ, start_response):
+    output = 'Go away'
     #output = pformat(environ)
-    output = 'Thank you, come again'
 
-    for path in getMatchingPaths(getUrl(environ)):
-        pull(path)
-        deploy(path)
+    payload = getPayload(environ)
+    if HMAC_OK(payload, environ.get('HTTP_X_HUB_SIGNATURE', '')):
+        output = 'Thank you, come again!'
+        for path in getMatchingPaths(getUrl(payload)):
+            pull(path)
+            deploy(path)
 
     status = '200 OK'
     response_headers = [('Content-type', 'text/plain'),
