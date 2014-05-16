@@ -51,7 +51,6 @@ def application(environ, start_response):
     
     for repository in config['repositories']:
         key = str(repository.get('key', ' ')) # not unicode, unicode makes HMAC sad
-        print key, type(key)
         if repository['url'] == repoUrl and HMAC_OK(key, payload, hash):
             output = 'Thank you, come again!'
             path = repository['path']
