@@ -56,7 +56,7 @@ def application(environ, start_response):
             path = repository['path']
             deploy = repository.get('deploy', 'touch deploy_time')
             
-            call(['cd "' + path + '" && git pull'], shell=True) # pull
+            call(['cd "' + path + '" && git fetch --all && git reset --hard origin/master'], shell=True) # pull
             call(['cd "' + path + '" && ' + deploy], shell=True) # deploy
 
     status = '200 OK'
