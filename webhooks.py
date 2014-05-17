@@ -3,12 +3,14 @@ from pprint import pformat, pprint
 import sys, os
 import json
 from subprocess import call
+import hashlib
+import hmac
 
 # "inspired" by (read, stolen from): https://github.com/logsol/Github-Auto-Deploy
 
 def getConfig():
     try:
-        configString = open(os.path.dirname(__file__) + '/config.json').read()
+        configString = open(os.path.join(os.path.dirname(__file__), 'config.json')).read()
     except:
         sys.exit('Could not load config.json file')
 
@@ -18,49 +20,44 @@ def getConfig():
         sys.exit('config.json file is not valid json')
 
     for repository in config['repositories']:
-        if(not os.path.isdir(repository['path'])):
+        if not os.path.isdir(repository['path']):
             sys.exit('Directory ' + repository['path'] + ' not found')
-        if(not os.path.isdir(repository['path'] + '/.git')):
+        if not os.path.isdir(repository['path'] + '/.git'):
             sys.exit('Directory ' + repository['path'] + ' is not a Git repository')
 
     return config
 
-def getUrl(environ):
+def getPayload(environ):
     try:
         length = int(environ.get('CONTENT_LENGTH', '0'))
     except ValueError:
         length = 0
+    return environ['wsgi.input'].read(length)
 
-    url = json.loads(environ['wsgi.input'].read(length))['repository']['url']
-    return url
+def getUrl(payload):
+    return json.loads(payload).get('repository', {}).get('url', '')
 
-def getMatchingPaths(repoUrl):
-    res = []
-    config = getConfig()
-    for repository in config['repositories']:
-        if(repository['url'] == repoUrl):
-            res.append(repository['path'])
-    return res
-
-def pull(path):
-    call(['cd "' + path + '" && git pull'], shell=True)
-
-def deploy(path):
-    config = getConfig()
-    for repository in config['repositories']:
-        if(repository['path'] == path):
-            if 'deploy' in repository:
-                 call(['cd "' + path + '" && ' + repository['deploy']], shell=True)
-            break
-
+def HMAC_OK(key, payload, hash):
+    computed_hash = hmac.new(key, payload, hashlib.sha1).hexdigest()
+    return hash.split('=')[-1] == computed_hash
 
 def application(environ, start_response):
-    #output = pformat(environ)
-    output = 'Thank you, come again'
+    output = 'Go away'
 
-    for path in getMatchingPaths(getUrl(environ)):
-        pull(path)
-        deploy(path)
+    config = getConfig()
+    hash = environ.get('HTTP_X_HUB_SIGNATURE', '')
+    payload = getPayload(environ)
+    repoUrl = getUrl(payload)
+    
+    for repository in config['repositories']:
+        key = str(repository.get('key', ' ')) # not unicode, unicode makes HMAC sad
+        if repository['url'] == repoUrl and HMAC_OK(key, payload, hash):
+            output = 'Thank you, come again!'
+            path = repository['path']
+            deploy = repository.get('deploy', 'touch deploy_time')
+            
+            call(['cd "' + path + '" && git fetch --all && git reset --hard origin/master'], shell=True) # pull
+            call(['cd "' + path + '" && ' + deploy], shell=True) # deploy
 
     status = '200 OK'
     response_headers = [('Content-type', 'text/plain'),

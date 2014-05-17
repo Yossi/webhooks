@@ -1,0 +1,10 @@
+{
+    "repositories": 
+    [{
+        "url": "https://github.com/Yossi/webhooks", 
+        "path": "/home/yossi/cgi-bin/githubwebhooks",
+        
+        "key": "123",
+        "deploy": "touch deploying"
+    }]
+}
