@@ -3,7 +3,7 @@
     [{
         "url": "https://github.com/Yossi/webhooks", 
         "path": "/home/yossi/cgi-bin/githubwebhooks",
-        "deploy": "touch deploying"
+        "deploy": "echo $(whoami)"
     }, 
     {
         "url": "https://github.com/Yossi/IngressPortals",
