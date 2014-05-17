@@ -71,4 +71,5 @@ def application(environ, start_response):
 if __name__ == '__main__':
     httpd = make_server('', 8005, application)
     print "server running"
-    httpd.handle_request()
+    httpd.serve_forever()
+    
